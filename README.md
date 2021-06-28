@@ -2,15 +2,18 @@
 
 This project contains source code and supporting files for a serverless application that you can deploy with the SAM CLI. It includes the following files and folders:
 
-- functions - Code for the application's Lambda functions to check the value of, buy, or sell shares of a stock.
-- statemachines - Definition for the state machine that orchestrates the stock trading workflow.
+- functions - Code for the application's Lambda functions to invoke AWS Batch or act as a callback notifier to step function.
+- statemachines - Definition for the state machine that orchestrates the complex workflow of managing multiple nested batch jobs using waitForTaskToken callback mechanism and child step functions.
 - template.yaml - A template that defines the application's AWS resources.
 
-This application creates a mock orchestration of AWS batch jobs using Step functions. It demonstrates the power of Step Functions to orchestrate AWS Batch, Lambda functions and other AWS resources to form complex and robust workflows, using Map for parallel execution, child step functions for handling step function execution limits (25K execution history) while demonstrating waitForTaskToken callback pattern to handle dynamic completion rather than polling for job status.
+This application creates a mock orchestration of AWS batch jobs using Step functions. It demonstrates the power of Step Functions to orchestrate AWS Batch, Lambda functions and other AWS resources to form complex and robust workflows, using Map for parallel execution, child step functions for overcoming step function execution limits (25K execution history) while demonstrating waitForTaskToken callback pattern to handle dynamic completion rather than polling for job status as well as templating everything using SAM.
 
 AWS Step Functions lets you coordinate multiple AWS services into serverless workflows so you can build and update apps quickly. Using Step Functions, you can design and run workflows that stitch together services, such as AWS Lambda, AWS Fargate, and Amazon SageMaker, into feature-rich applications.
 
 The application uses several AWS resources, including Step Functions state machines, Lambda functions and AWS Batch. These resources are defined in the `template.yaml` file in this project. You can update the template to add AWS resources through the same deployment process that updates your application code.
+
+![](imgs/orchestration.png)
+
 
 ## Requirements
 
