@@ -6,32 +6,35 @@ Description: >
   SAM Template for stepfunction-complex-orchestrator-app
 
 Parameters:
-  BatchScriptName: 
+  BatchScriptName:
     Type: String
     Description: 'Name of the batch script (including ".sh"); the script would be copied into a newly generated S3 bucket'
-  VPCID: 
+  VPCID:
     Type: String
     Description: 'ID of the VPC to run Batch Jobs on Fargate'
-  Subnets: 
+  Subnets:
     Type: String
     Description: 'Comma separated list of subnets in the vpc specified where to run batch jobs on fargate '
-  
-    
+  batchSleepDuration:
+    Type: Number
+    Default: 30
+    Description: 'Batch script sleep time (in seconds) to mimic job activity, ensure its not greater than 60 seconds to avoid step function timeout'
+
 Resources:
 
   OrchestratorStepFunctionRole:
     Type: AWS::IAM::Role
     Properties:
-      AssumeRolePolicyDocument: 
+      AssumeRolePolicyDocument:
         Version: "2012-10-17"
-        Statement: 
-          - 
+        Statement:
+          -
             Effect: "Allow"
-            Principal: 
-              Service: 
+            Principal:
+              Service:
                 - "states.amazonaws.com"
                 - "lambda.amazonaws.com"
-            Action: 
+            Action:
               - "sts:AssumeRole"
       Policies:
         - PolicyName: StepFunctionOrchestrationNotificationPolicy
@@ -59,7 +62,7 @@ Resources:
                 - "logs:DescribeLogGroups"
                 # For child step function invoke/stop
                 - "states:StartExecution"
-                - "states:StopExecution"  
+                - "states:StopExecution"
                 - "states:DescribeExecution"
                 # X-ray enabling
                 - "xray:PutTraceSegments"
@@ -69,7 +72,7 @@ Resources:
                 Resource: '*'
 
 
-  
+
   # S3BucketPolicy:
   #   Type: 'AWS::S3::BucketPolicy'
   #   Properties:
@@ -90,22 +93,22 @@ Resources:
   #           Condition:
   #             StringEquals:
   #               aws:SourceAccount: !Ref "AWS::AccountId"
-  
+
 
   LambdaExecutingBatchRole:
     Type: AWS::IAM::Role
     Properties:
-      AssumeRolePolicyDocument: 
+      AssumeRolePolicyDocument:
         Version: "2012-10-17"
-        Statement: 
-          - 
+        Statement:
+          -
             Effect: "Allow"
-            Principal: 
+            Principal:
               Service:
                 - "lambda.amazonaws.com"
-            Action: 
+            Action:
               - "sts:AssumeRole"
-      ManagedPolicyArns: 
+      ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
         - PolicyName: BatchExecutionPolicy
@@ -123,15 +126,15 @@ Resources:
   LambdaNotifyStepFunctionRole:
     Type: AWS::IAM::Role
     Properties:
-      AssumeRolePolicyDocument: 
+      AssumeRolePolicyDocument:
         Version: "2012-10-17"
-        Statement: 
-          - 
+        Statement:
+          -
             Effect: "Allow"
-            Principal: 
+            Principal:
               Service:
                 - "lambda.amazonaws.com"
-            Action: 
+            Action:
               - "sts:AssumeRole"
       Policies:
         - PolicyName: LambdaNotifyStepFunctionPolicy
@@ -143,23 +146,23 @@ Resources:
                 Action:
                 - "states:SendTaskSuccess"
                 - "states:SendTaskFailure"
-                Resource: '*'  
-      ManagedPolicyArns: 
+                Resource: '*'
+      ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-        
-                
+
+
   BatchJobRole:
     Type: AWS::IAM::Role
     Properties:
-      AssumeRolePolicyDocument: 
+      AssumeRolePolicyDocument:
         Version: "2012-10-17"
-        Statement: 
-          - 
+        Statement:
+          -
             Effect: "Allow"
-            Principal: 
+            Principal:
               Service:
                 - "ecs-tasks.amazonaws.com"
-            Action: 
+            Action:
               - "sts:AssumeRole"
       Policies:
         - PolicyName: S3ReadOnlyPolicy
@@ -206,7 +209,7 @@ Resources:
       GroupId: !Ref 'FargateSecurityGroup'
       IpProtocol: -1
       SourceSecurityGroupId: !Ref 'FargateSecurityGroup'
-      
+
   ComputeEnvironment:
     Type: AWS::Batch::ComputeEnvironment
     Properties:
@@ -221,8 +224,8 @@ Resources:
         Subnets: !Split [ "," , !Ref Subnets ]
         SecurityGroupIds:
           - !Ref 'FargateSecurityGroup'
-        
-    
+
+
   BatchJobDefn:
     Type: AWS::Batch::JobDefinition
     Properties:
@@ -236,10 +239,10 @@ Resources:
         - Type: VCPU
           Value: 0.25
         - Type: MEMORY
-          Value: 512          
+          Value: 512
         Command: [ "Ref::batch_script","Ref::sleep_interval","Ref::batch_body","Ref::batch_status","Ref::function_id","Ref::task_token"]
-        FargatePlatformConfiguration: 
-          PlatformVersion: "1.4.0" 
+        FargatePlatformConfiguration:
+          PlatformVersion: "1.4.0"
         NetworkConfiguration:
           AssignPublicIp: "ENABLED"
         JobRoleArn: !Ref BatchJobRole
@@ -247,23 +250,23 @@ Resources:
         Environment:
           - Name: BATCH_FILE_S3_URL
             Value: !Join [ "/", [ "s3:/", !Ref BatchScriptS3Bucket, !Ref BatchScriptName ] ]
-          - Name: BATCH_FILE_TYPE 
+          - Name: BATCH_FILE_TYPE
             Value: "script"
-            
+
       RetryStrategy:
         Attempts: 1
-        
+
   BatchJobQueue:
     Type: AWS::Batch::JobQueue
     Properties:
       Priority: 1
-      ComputeEnvironmentOrder: 
+      ComputeEnvironmentOrder:
         - Order: 1
           ComputeEnvironment: !Ref ComputeEnvironment
       State: Enabled
       JobQueueName: !Join [ "-", [ 'job-queue', !Ref 'AWS::StackName' ] ]
 
-                
+
   CallbackNotifyStateMachine3:
     Type: AWS::Serverless::StateMachine # More info about State Machine Resource: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-statemachine.html
     Properties:
@@ -271,7 +274,7 @@ Resources:
       Policies:
         - LambdaInvokePolicy:
             FunctionName: !Ref CallbackNotifyFunction
-          
+
   SyncNestedStateMachine2:
     Type: AWS::Serverless::StateMachine # More info about State Machine Resource: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-statemachine.html
     Properties:
@@ -280,8 +283,8 @@ Resources:
         BatchJobSubmitFunction: !Ref BatchJobSubmitFunction
         CallbackNotifyFunction: !Ref CallbackNotifyFunction
         CallbackNotifyStepFunction3Arn: !GetAtt CallbackNotifyStateMachine3.Arn
-       
-      Role: !GetAtt OrchestratorStepFunctionRole.Arn  
+
+      Role: !GetAtt OrchestratorStepFunctionRole.Arn
 
   ComplexOrchestratorStateMachine1:
     Type: AWS::Serverless::StateMachine # More info about State Machine Resource: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-statemachine.html
@@ -289,6 +292,7 @@ Resources:
       DefinitionUri: statemachine/complex_orchestrator_step_function1.asl.json
       DefinitionSubstitutions:
         SyncNestedStepFunction2Arn: !GetAtt SyncNestedStateMachine2.Arn
+        batchSleepDuration: !Ref batchSleepDuration
       Role: !GetAtt OrchestratorStepFunctionRole.Arn
 
   BatchJobSubmitFunction:
@@ -299,7 +303,7 @@ Resources:
       Runtime: python3.8
       Timeout: 20
       Environment:
-        Variables: 
+        Variables:
           JOB_NAME: BatchJobSubmission
           JOB_QUEUE: !Ref BatchJobQueue
           JOB_DEFINITION: !Ref BatchJobDefn
@@ -329,7 +333,7 @@ Resources:
   #       echo "-----------------------"
   #       env
   #       echo "-----------------------"
-        
+
   #       echo "This batch job attempts to sleep for given interval and then notify step function"
   #       echo "jobId: $AWS_BATCH_JOB_ID"
   #       echo "jobQueue: $AWS_BATCH_JQ_NAME"
@@ -347,28 +351,28 @@ Resources:
   #       "Task": "$STEP_FUNCTION_TASK_ID"
   #       }
   #       EOF_OF_MSG
-        
+
   #       sleep $SLEEP_INT
   #       date
   #       echo "Done with activity, going to notify Step function : $STEP_FUNCTION_ID with task id: $STEP_FUNCTION_TASK_ID"
   #       check_for_success=$(echo $STEP_FUNCTION_STATUS | grep -i ccess)
   #       echo $check_for_success
-        
+
   #       if [ -z "$check_for_success" ]; then
   #         aws stepfunctions send-task-failure --task-token $STEP_FUNCTION_TASK_ID --error failed
   #       else
   #         aws stepfunctions send-task-success --task-token $STEP_FUNCTION_TASK_ID --task-output file://send-message.json
   #       fi
-        
+
   #       echo "bye bye!!"
-        
+
 Outputs:
   ComplexOrchestratorStateMachine:
     Description: Main Orchestrator State machine to run
     Value: !GetAtt ComplexOrchestratorStateMachine1.Name
   BucketName:
     Value: !Ref BatchScriptS3Bucket
-    Description: Name of the generated Amazon S3 bucket 
+    Description: Name of the generated Amazon S3 bucket
   BatchJobDefnScriptPath:
     Value: !Sub "s3://${BatchScriptS3Bucket}/${BatchScriptName}"
     Description: Complete path to the sample AWS Batch script (to be uploaded) with s3 bucket name.
@@ -378,4 +382,3 @@ Outputs:
   BatchJobDefnArn:
     Value: !Ref BatchJobDefn
     Description: Arn of the AWS Batch Job Definition created
-  

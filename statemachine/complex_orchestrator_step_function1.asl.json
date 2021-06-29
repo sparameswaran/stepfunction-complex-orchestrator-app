@@ -1,5 +1,5 @@
 {
-  "Comment": "An example of the Amazon States Language using a Map Iterator to execute multiple branches at the same time.",
+  "Comment": "Complex Orchestrator built in Amazon States Language using a Map Iterator to execute multiple branches at the same time.",
   "StartAt": "Execute Nested Step Functions",
   "States": {
     "Execute Nested Step Functions": {
@@ -18,9 +18,9 @@
               "StateMachineArn": "${SyncNestedStepFunction2Arn}",
               "Input": {
                 "NeedCallback": true,
-                "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID.$": "$$.Execution.Id", 
+                "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID.$": "$$.Execution.Id",
                 "input.$": "$",
-                "sleep_interval": 2,
+                "batch_sleep_interval": "${batchSleepDuration}",
                 "return_status": "Success"
               }
             },
@@ -43,7 +43,7 @@
                 "Next": "Notify Failure"
               }
             ]
-          }, 
+          },
           "Check States": {
             "Type": "Pass",
             "Next": "Notify Success"

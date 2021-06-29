@@ -79,9 +79,17 @@ Value               ComplexOrchestratorStateMachine1-pDlfR0UAz6xG
 ```
 Ensure copy of the *batch-notify-step-function.sh* script gets copied into the location specified by `BatchJobDefnScriptPath` before starting the actual testing.
 
+```
+ # Replace the s3 bucket to match one generated
+ aws s3 cp batch-script/batch-notify-step-function.sh  s3://<sample-orchestrator-s3bucket-pl2323sd>/batch-notify-step-function.sh
+```
+
 ## Testing
 
 Use the sample payloads (under test-inputs) to test the individual step functions or lambda functions. The sample payload for the main orchestrator step function has 5 input elements within the entries array and this would make it create and invoke 5 child step functions in parallel. Each child step function is expected to take atmost 2 minutes to complete (30 seconds wait for the callback_notify_step_function3 while the AWS Batch job takes about 20 seconds controlled by settings in orchestrator step function's sleep_interval attribute passed to child step function payload)
+
+If the batch job fails or if the step functions timed out, then the issue is due to missing batch script in the s3 bucket.
+Copy over the batch script into the s3 bucket generated as shown in Deployment.
 
 ## Cleanup
 
