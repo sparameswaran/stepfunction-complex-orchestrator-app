@@ -21,6 +21,33 @@ Parameters:
     Description: 'Batch script sleep time (in seconds) to mimic job activity, ensure its not greater than 60 seconds to avoid step function timeout'
 
 Resources:
+  AWSBatchServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service: "batch.amazonaws.com"
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole
+
+  AWSECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service: "ecs-tasks.amazonaws.com"
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
 
   OrchestratorStepFunctionRole:
     Type: AWS::IAM::Role
@@ -70,8 +97,6 @@ Resources:
                 - "xray:GetSamplingRules"
                 - "xray:GetSamplingTargets"
                 Resource: '*'
-
-
 
   # S3BucketPolicy:
   #   Type: 'AWS::S3::BucketPolicy'
@@ -216,8 +241,7 @@ Resources:
       ComputeEnvironmentName: !Join [ "-", [ 'sample-batch-compute-env', !Ref 'AWS::StackName' ] ]
       Type: MANAGED
       State: ENABLED
-      #ServiceRole: !GetAtt BatchExecutionRole.Arn
-      ServiceRole: !Sub "arn:aws:iam::${AWS::AccountId}:role/service-role/AWSBatchServiceRole"
+      ServiceRole: !Ref AWSBatchServiceRole
       ComputeResources:
         Type: FARGATE
         MaxvCpus: 1
@@ -246,7 +270,7 @@ Resources:
         NetworkConfiguration:
           AssignPublicIp: "ENABLED"
         JobRoleArn: !Ref BatchJobRole
-        ExecutionRoleArn: !Sub 'arn:aws:iam::${AWS::AccountId}:role/ecsTaskExecutionRole'
+        ExecutionRoleArn: !GetAtt AWSECSTaskExecutionRole.Arn
         Environment:
           - Name: BATCH_FILE_S3_URL
             Value: !Join [ "/", [ "s3:/", !Ref BatchScriptS3Bucket, !Ref BatchScriptName ] ]
