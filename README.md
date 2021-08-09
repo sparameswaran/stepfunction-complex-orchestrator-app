@@ -29,31 +29,42 @@ The Serverless Application Model Command Line Interface (SAM CLI) is an extensio
 To use the SAM CLI, you need the following tools:
 
 * SAM CLI - [Install the SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html)
-* [Python 3 installed](https://www.python.org/downloads/)
+* [Python 3.8 installed](https://www.python.org/downloads/)
 * Docker - [Install Docker community edition](https://hub.docker.com/search/?type=edition&offering=community)
 
 Note: Docker not really required if there is no local dev/test using sam local option.
+Switch to different version of Python if necessary by changing version information inside the sam template file (template.yaml)
+
+Need following information when running sam deploy:
+* VPC ID - Existing VPC where the AWS Batch would run
+* Subnets - Subnets belonging to the VPC where Fargate Compute envs would be created.
+
+
+The `sam build` command will build the source of your application. The `sam deploy --guided` command will package and deploy your application to AWS, with a series of prompts:
+
+* **Stack Name**: The name of the stack to deploy to CloudFormation. This should be unique to your account and region, and a good starting point would be something matching your project name.
+* **AWS Region**: The AWS region you want to deploy your app to.
+* **BatchScriptName**: `batch-notify-step-function.sh` - default script provided already (available under batch-script folder)
+* **VPCID**: Name of an existing VPC which would be used to provide Fargate based compute environment for the AWS Batch Jobs
+* **Subnets**: comma separated list of subnet ids within the above VPC.
+* **Confirm changes before deploy**: If set to yes, any change sets will be shown to you before execution for manual review. If set to no, the AWS SAM CLI will automatically deploy application changes.
+* **Allow SAM CLI IAM role creation**: Many AWS SAM templates, including this example, create AWS IAM roles required for the AWS Lambda function(s) included to access AWS services. By default, these are scoped down to minimum required permissions. To deploy an AWS CloudFormation stack which creates or modifies IAM roles, the `CAPABILITY_IAM` value for `capabilities` must be provided. If permission isn't provided through this prompt, to deploy this example you must explicitly pass `--capabilities CAPABILITY_IAM` to the `sam deploy` command.
+* **Save arguments to samconfig.toml**: If set to yes, your choices will be saved to a configuration file inside the project, so that in the future you can just re-run `sam deploy` without parameters to deploy changes to your application.
 
 To build and deploy your application for the first time, run the following in your shell:
 
 ```bash
 git clone https://github.com/sparameswaran/stepfunction-complex-orchestrator-app
 cd stepfunction-complex-orchestrator-app
+
+# Run this first and subsequently on making changes to code/templates
 sam build
+# Check the parameter details
 sam deploy --guided
+
+# Need to be run just once after sam deploy was successful unless changes were made to the batch script.
 aws s3 cp ./batch-script/batch-notify-step-function.sh <S3-bucket-created-by-sam>
 ```
-
-The first command will build the source of your application. The second command will package and deploy your application to AWS, with a series of prompts:
-
-* **Stack Name**: The name of the stack to deploy to CloudFormation. This should be unique to your account and region, and a good starting point would be something matching your project name.
-* **AWS Region**: The AWS region you want to deploy your app to.
-* **BatchScriptName**: `batch-notify-step-function.sh`
-* **VPCID**: Name of an existing VPC which would be used to provide Fargate based compute environment for the AWS Batch Jobs
-* **Subnets**: comma separated list of subnet ids within the above VPC.
-* **Confirm changes before deploy**: If set to yes, any change sets will be shown to you before execution for manual review. If set to no, the AWS SAM CLI will automatically deploy application changes.
-* **Allow SAM CLI IAM role creation**: Many AWS SAM templates, including this example, create AWS IAM roles required for the AWS Lambda function(s) included to access AWS services. By default, these are scoped down to minimum required permissions. To deploy an AWS CloudFormation stack which creates or modifies IAM roles, the `CAPABILITY_IAM` value for `capabilities` must be provided. If permission isn't provided through this prompt, to deploy this example you must explicitly pass `--capabilities CAPABILITY_IAM` to the `sam deploy` command.
-* **Save arguments to samconfig.toml**: If set to yes, your choices will be saved to a configuration file inside the project, so that in the future you can just re-run `sam deploy` without parameters to deploy changes to your application.
 
 ## Deployment output
 At end of the deployment, one should see similar outputs specifying the Batch script location (with s3 bucket name), main orchestrator step function and other resources.
@@ -90,7 +101,7 @@ Ensure copy of the *batch-notify-step-function.sh* script gets copied into the l
 
 ## Testing
 
-Use the sample payloads (under test-inputs) to test the individual step functions or lambda functions. The sample payload for the main orchestrator step function has 3 input elements within the entries array and this would make it create and invoke 3 child step functions in parallel. Each child step function is expected to take atmost 3 minutes to complete (30 seconds wait for the callback_notify_step_function3 while the AWS Batch job takes about 20 seconds controlled by settings in orchestrator step function's sleep_interval attribute passed to child step function payload).
+Use the sample payloads (available under test-inputs) to test the individual step functions or lambda functions. Start the test with the main `ComplexOrchestratorStateMachine1-xyz..` Step function. The sample payload for the main orchestrator step function has 3 input elements within the entries array and this would make it create and execute 3 child step functions in parallel. This can be modified to make it execute more children in parallel. Each child step function is expected to take atmost 3 minutes to complete (30 seconds wait for the callback_notify_step_function3 while the AWS Batch job takes about 20 seconds controlled by settings in orchestrator step function's sleep_interval attribute passed to child step function payload). Click the child step functions to follow their individual executions or step through the AWS Lambda or AWS Batch Executions.
 
 If the batch job fails or if the step functions timed out, then the issue is due to missing batch script in the s3 bucket.
 Copy over the batch script into the s3 bucket generated as shown in Deployment.
