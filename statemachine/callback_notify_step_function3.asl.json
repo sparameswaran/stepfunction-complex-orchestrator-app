@@ -5,11 +5,11 @@
     "Init": {
       "Type": "Pass",
       "Result": "Hello",
-      "Next": "Wait"      
+      "Next": "Wait"
     },
     "Wait": {
       "Type": "Wait",
-      "Seconds": 30,
+      "Seconds": 20,
       "Next": "Success"
     },
     "Success": {

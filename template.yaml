@@ -17,7 +17,7 @@ Parameters:
     Description: 'Comma separated list of subnets in the vpc specified where to run batch jobs on fargate '
   batchSleepDuration:
     Type: Number
-    Default: 30
+    Default: 15
     Description: 'Batch script sleep time (in seconds) to mimic job activity, ensure its not greater than 60 seconds to avoid step function timeout'
 
 Resources:
@@ -87,6 +87,10 @@ Resources:
                 - "logs:PutResourcePolicy"
                 - "logs:DescribeResourcePolicies"
                 - "logs:DescribeLogGroups"
+                # For invoking batch
+                - "batch:SubmitJob"
+                - "batch:DescribeJobs"
+                - "batch:TerminateJob"                
                 # For child step function invoke/stop
                 - "states:StartExecution"
                 - "states:StopExecution"
@@ -307,6 +311,9 @@ Resources:
         BatchJobSubmitFunction: !Ref BatchJobSubmitFunction
         CallbackNotifyFunction: !Ref CallbackNotifyFunction
         CallbackNotifyStepFunction3Arn: !GetAtt CallbackNotifyStateMachine3.Arn
+        JobDefinitionName: !Ref BatchJobDefn
+        JobName: BatchJobSubmission
+        JobQueue: !Ref BatchJobQueue
 
       Role: !GetAtt OrchestratorStepFunctionRole.Arn
 

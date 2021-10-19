@@ -1,5 +1,8 @@
 {
     "input": {
-      "name": "invoke3"
-    }
+      "name": "Test_Invoke"
+    },
+    "batch_sleep_interval": "15",
+    "return_status": "Success",
+    "NeedCallback": false
 }
