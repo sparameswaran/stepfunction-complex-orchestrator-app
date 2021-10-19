@@ -13,7 +13,7 @@
 					"Execute Nested Step Function": {
 						"Type": "Task",
 						"Resource": "arn:aws:states:::states:startExecution.sync",
-						"TimeoutSeconds": 300,
+						"TimeoutSeconds": 1200,
 						"Parameters": {
 							"StateMachineArn": "${SyncNestedStepFunction2Arn}",
 							"Input": {
@@ -28,7 +28,7 @@
 							"ErrorEquals": [
 								"States.TaskFailed"
 							],
-							"IntervalSeconds": 2,
+							"IntervalSeconds": 30,
 							"BackoffRate": 2,
 							"MaxAttempts": 3
 						}],
